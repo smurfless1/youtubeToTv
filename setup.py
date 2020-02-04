@@ -9,14 +9,15 @@ setup(
     url='https://github.com/smurfless1/youtubeToTv',
     versioning='dev',
     setup_requires=['setupmeta'],
-    dependency_links=['https://pypi.org/project/setupmeta'],
+    dependency_links=[
+        'https://pypi.org/project/setupmeta',
+    ],
     packages=["youtubetotv"],
     include_package_data=True,
     python_requires='>=3.4',
     install_requires=[
         'click',
-        #'https://github.com/smurfless1/applescript.git'
-        'applescript',
+        'lameapplescript@https://github.com/smurfless1/applescript/archive/master.zip',
     ],
     extras_require={
         'dev': [
