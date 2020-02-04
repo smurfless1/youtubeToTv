@@ -49,8 +49,7 @@ def rmplaylist(name):
 
 
 @click.command()
-@click.option("--itunes", "-i", help='iTunes base dir', default='/itunes/youtube')
 @click.option("--dir", "-d", help='dir to scan', default=os.path.dirname(os.path.abspath(__file__)))
 @click.option('--outdir', '-o', help='output dir', default='~/Downloads')
-def download(itunes, dir, outdir):
-    run(itunes, dir, outdir)
+def download(dir, outdir):
+    run('', dir, outdir)
