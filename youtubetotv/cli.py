@@ -1,6 +1,9 @@
+import os
+
 import click
-from youtubeToTv.youtubetotv.playlists import PlaylistList
+
 from youtubeToTv.youtubetotv.playlists import Playlist
+from youtubeToTv.youtubetotv.playlists import PlaylistList
 from .run import run
 
 
