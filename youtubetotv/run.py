@@ -1,7 +1,7 @@
 import json
 import os
 
-from youtubeToTv.yt2tv.mylogger import MyLogger
+from youtubeToTv.youtubetotv.mylogger import MyLogger
 
 if os.path.exists('/Volumes'):
     from subler import Atom, Subler

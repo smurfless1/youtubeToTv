@@ -1,7 +1,7 @@
 import click
-from youtubeToTv.yt2tv.playlists import PlaylistList
-from youtubeToTv.yt2tv.playlists import Playlist
-from .youtubetag import run
+from youtubeToTv.youtubetotv.playlists import PlaylistList
+from youtubeToTv.youtubetotv.playlists import Playlist
+from .run import run
 
 
 @click.group()

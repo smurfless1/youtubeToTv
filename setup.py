@@ -4,13 +4,13 @@ from setuptools import setup
 
 
 setup(
-    name='yt2tv',
+    name='youtubetotv',
     author='daveb@smurfless.com',
     url='https://github.com/smurfless1/youtubeToTv',
     versioning='dev',
     setup_requires=['setupmeta'],
     dependency_links=['https://pypi.org/project/setupmeta'],
-    packages=["yt2tv"],
+    packages=["youtubetotv"],
     include_package_data=True,
     python_requires='>=3.4',
     install_requires=[
@@ -29,7 +29,7 @@ setup(
     },
     entry_points='''
     [console_scripts]
-    youtubetotv=yt2tv.cli:playlist
+    youtubetotv=youtubetotv.cli:playlist
     ''',
 )
 
