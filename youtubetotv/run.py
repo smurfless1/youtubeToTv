@@ -238,3 +238,11 @@ def run(resultdir, workdir):
         logger.debug(f'Telling pool it\'s shutdown time.')
         pool.shutdown(wait=True)
     logger.info("Done!")
+
+
+def postprocess(dir):
+    for subdir, dirs, files in os.walk(dir):
+        for thisfile in files:
+            (unused, ext) = os.path.splitext(thisfile)
+            if ext == '.mp4':
+                return
