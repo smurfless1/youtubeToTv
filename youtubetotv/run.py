@@ -115,7 +115,7 @@ end try
     created_futures.append(add_pool.submit(applescript_then_trash, script, infojsonfile, source_file, tagged_file))
 
 
-def run(resultdir, workdir):
+def run(resultdir: str, workdir: str, force: bool):
     # workdir is ~/Downloads - working directory for the download
     # resultdir is ~/Movies is where they should go when tagged
     os.chdir(Path(workdir).absolute())  # youtube-dl seems to only work here for now
@@ -184,7 +184,6 @@ def run(resultdir, workdir):
 
     ydl_default_opts = {
         'call_home': False,
-        # 'download_archive': PlaylistList.archive,
         'format': 'best[ext=mp4]/best',
         'ignoreerrors': True,
         'logger': MyLogger(),
@@ -200,6 +199,9 @@ def run(resultdir, workdir):
         # 'playlistend': 6,
         # 'playlist_items': [], #  Specific indices of playlist to download.
     }
+
+    if not force:
+        ydl_default_opts['download_archive'] = PlaylistList.archive
 
     ydl_opts = ydl_default_opts
     # todo ask itunes: see what episodes of each show we don't have yet

@@ -54,9 +54,10 @@ def rmplaylist(name):
 @playlist.command()
 @click.option("--dir", "-d", help='dir to scan', default=Path("~/Movies").expanduser())
 @click.option('--outdir', '-o', help='output dir', default=Path("~/Downloads").expanduser())
+@click.option('--force', '-f', help='force download', is_flag=True)
 @click_log.simple_verbosity_option(logger)
-def download(dir, outdir):
-    run(dir, outdir)
+def download(dir, outdir, force):
+    run(dir, outdir, force)
 
 
 if __name__ == "__main__":
