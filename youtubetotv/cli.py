@@ -2,11 +2,9 @@ import os
 from pathlib import Path
 
 import click
-
-from youtubetotv.playlists import Playlist
-from youtubetotv.playlists import PlaylistList
-from youtubetotv.run import logger, run
 import click_log
+from youtubetotv.playlists import Playlist, PlaylistList
+from youtubetotv.run import logger, run
 
 
 @click.group()
@@ -52,9 +50,9 @@ def rmplaylist(name):
 
 
 @playlist.command()
-@click.option("--dir", "-d", help='dir to scan', default=Path("~/Movies").expanduser())
-@click.option('--outdir', '-o', help='output dir', default=Path("~/Downloads").expanduser())
-@click.option('--force', '-f', help='force download', is_flag=True)
+@click.option("--dir", "-d", help="dir to scan", default=Path("~/Movies").expanduser())
+@click.option("--outdir", "-o", help="output dir", default=Path("~/Downloads").expanduser())
+@click.option("--force", "-f", help="force download", is_flag=True)
 @click_log.simple_verbosity_option(logger)
 def download(dir, outdir, force):
     run(dir, outdir, force)

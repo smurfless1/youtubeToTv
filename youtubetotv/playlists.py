@@ -1,6 +1,6 @@
-import click
 import os
 import pickle
+
 from xdg import XDG_CONFIG_HOME
 
 configfile_dir = XDG_CONFIG_HOME / "ntscli.develop"
@@ -11,7 +11,7 @@ os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 class PlaylistList:
     cache = os.path.join(os.path.dirname(os.path.abspath(__file__)), "playlists.pkl")
     lists = {}
-    archive = os.path.expanduser('~/.config/youtube-dl/downloaded_by_python')
+    archive = os.path.expanduser("~/.config/youtube-dl/downloaded_by_python")
 
     @staticmethod
     def load():
@@ -41,5 +41,3 @@ class Playlist:
             raise Exception("Ouch")
         except:
             print("Unable to load a currently selected playlist.")
-
-

@@ -1,21 +1,20 @@
 import concurrent
-import time
-from copy import copy
-from logging import getLogger
 import json
 import os
+import platform
+import time
+from concurrent.futures import ThreadPoolExecutor
+from logging import getLogger
 from pathlib import Path
-from typing import List, Any
-
-from youtubetotv.mylogger import MyLogger
+from time import sleep
+from typing import Any, List
 
 import applescript
-from .playlists import PlaylistList
-from time import sleep
-import youtube_dl
-import platform
-from concurrent.futures import ThreadPoolExecutor
 import click_log
+import youtube_dl
+from youtubetotv.mylogger import MyLogger
+
+from .playlists import PlaylistList
 
 if platform.system() == "Darwin":
     from subler import Atom, Subler
@@ -27,11 +26,11 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 PlaylistList.load()
 
-JSON_EPISODE_TAG = u'playlist_index'
-JSON_TV_SHOW_TAG = u'TV Show'
-JSON_TV_SHOW_NAME = u'playlist'
-JSON_TV_SHOW_EPISODE = u'playlist_index'
-JSON_EPISODE_NAME = u'title'
+JSON_EPISODE_TAG = "playlist_index"
+JSON_TV_SHOW_TAG = "TV Show"
+JSON_TV_SHOW_NAME = "playlist"
+JSON_TV_SHOW_EPISODE = "playlist_index"
+JSON_EPISODE_NAME = "title"
 
 
 # todo loop across multiple playlists
@@ -41,26 +40,27 @@ JSON_EPISODE_NAME = u'title'
 
 def defer_rmtrash(i):
     sleep(3)
-    os.system('rmtrash %s' % i)
+    os.system("rmtrash %s" % i)
 
 
 def tag_and_enqueue_add(
-        infojsonfile: Path,
-        source_file: Path,
-        output_directory: Path,
-        created_futures: List[Any],
-        add_pool: ThreadPoolExecutor,
-        rmtrash_pool: ThreadPoolExecutor) -> None:
+    infojsonfile: Path,
+    source_file: Path,
+    output_directory: Path,
+    created_futures: List[Any],
+    add_pool: ThreadPoolExecutor,
+    rmtrash_pool: ThreadPoolExecutor,
+) -> None:
     """Given the movie and info file, tag and queue the add."""
     time.sleep(3)  # fs sync?
     with infojsonfile.open() as jsonfile:
-        logger.debug('opening json file')
-        ytdl_update_dict = json.load(jsonfile, encoding='utf-8')
+        logger.debug("opening json file")
+        ytdl_update_dict = json.load(jsonfile, encoding="utf-8")
 
-    kind2 = Atom(u'Media Kind', JSON_TV_SHOW_TAG)
-    episode = Atom(u'TV Episode #', ytdl_update_dict[JSON_TV_SHOW_EPISODE])
-    show = Atom(u'TV Show', ytdl_update_dict[JSON_TV_SHOW_NAME].encode('ascii', 'ignore').decode('ascii'))
-    name = Atom(u'Name', ytdl_update_dict[JSON_EPISODE_NAME].encode('ascii', 'ignore').decode('ascii'))
+    kind2 = Atom("Media Kind", JSON_TV_SHOW_TAG)
+    episode = Atom("TV Episode #", ytdl_update_dict[JSON_TV_SHOW_EPISODE])
+    show = Atom("TV Show", ytdl_update_dict[JSON_TV_SHOW_NAME].encode("ascii", "ignore").decode("ascii"))
+    name = Atom("Name", ytdl_update_dict[JSON_EPISODE_NAME].encode("ascii", "ignore").decode("ascii"))
 
     tagged_file = output_directory.joinpath(source_file.name)
 
@@ -77,15 +77,15 @@ def tag_and_enqueue_add(
         # todo un-unicode comments type tags
 
         # todo set dest for completed files to correct itunes dir to avoid moves later
-        logger.debug(f'tagging {source_file}')
+        logger.debug(f"tagging {source_file}")
         tagger = Subler(str(source_file), dest=str(tagged_file), media_kind=JSON_TV_SHOW_TAG, metadata=metadata)
         tagger.tag()
     except BaseException as be:
         logger.error(be)
-        logger.error('Tags didnt get set, adding anyway')
+        logger.error("Tags didnt get set, adding anyway")
         pass
 
-    logger.debug(f'creating script for {source_file}')
+    logger.debug(f"creating script for {source_file}")
     # add to itunes directly
     script = """
 try
@@ -95,22 +95,24 @@ set newFile to add file_ to playlist "Library" of source "Library"
 tell newFile to set media kind to TV show
 end tell
 end try
-""" % str(tagged_file)
+""" % str(
+        tagged_file
+    )
     logger.debug(script)
 
     def applescript_then_trash(inscript, infojsonfile, outfile, tagged):
         try:
-            logger.debug(f'submitting applescript for {outfile}')
+            logger.debug(f"submitting applescript for {outfile}")
             applescript.run(inscript)
         except:
-            logger.error(f'failed applescript for {outfile}')
+            logger.error(f"failed applescript for {outfile}")
             pass
-        logger.debug(f'submitting trash jobs for {outfile}')
+        logger.debug(f"submitting trash jobs for {outfile}")
         created_futures.append(rmtrash_pool.submit(defer_rmtrash, infojsonfile))
         created_futures.append(rmtrash_pool.submit(defer_rmtrash, outfile))
         created_futures.append(rmtrash_pool.submit(defer_rmtrash, tagged))
 
-        logger.debug(f'submitting applescript job for {outfile}')
+        logger.debug(f"submitting applescript job for {outfile}")
 
     created_futures.append(add_pool.submit(applescript_then_trash, script, infojsonfile, source_file, tagged_file))
 
@@ -136,7 +138,7 @@ def run(resultdir: str, workdir: str, force: bool):
         """
         if platform.system() != "Darwin":
             return
-        if ytdl_update_dict['status'] == 'finished':
+        if ytdl_update_dict["status"] == "finished":
             created_futures.append(tagpool.submit(handle_ytdl_updates, ytdl_update_dict))
 
     def handle_ytdl_updates(ytdl_update_dict):
@@ -153,8 +155,8 @@ def run(resultdir: str, workdir: str, force: bool):
         if platform.system() != "Darwin":
             return
 
-        if ytdl_update_dict['status'] == 'finished':
-            logger.info('Done downloading, now adding to iTunes ...')
+        if ytdl_update_dict["status"] == "finished":
+            logger.info("Done downloading, now adding to iTunes ...")
 
             """
             Example:
@@ -170,9 +172,9 @@ def run(resultdir: str, workdir: str, force: bool):
             }"""
             logger.debug(ytdl_update_dict)
 
-            updated_file_path = Path(ytdl_update_dict['filename'])
+            updated_file_path = Path(ytdl_update_dict["filename"])
             ext = updated_file_path.suffix
-            if ext != '.mp4':
+            if ext != ".mp4":
                 return
 
             # build the desired output file Path in resultdir
@@ -181,27 +183,24 @@ def run(resultdir: str, workdir: str, force: bool):
 
             tag_and_enqueue_add(infojsonfile, outfile, Path(resultdir).expanduser(), created_futures, add_pool, rmtrash_pool)
 
-
     ydl_default_opts = {
-        'call_home': False,
-        'format': 'best[ext=mp4]/best',
-        'ignoreerrors': True,
-        'logger': MyLogger(),
-        'merge_output_format': 'mp4',
-        'outtmpl': "%(playlist)s--%(playlist_index)s--%(title)s.%(ext)s",
-        'postprocessors': [{
-            'key': 'FFmpegMetadata',
-        }],
-        'progress_hooks': [handle_raw_ytdl_updates],
-        'restrictfilenames': True,
-        'writeinfojson': True,
+        "call_home": False,
+        "format": "best[ext=mp4]/best",
+        "ignoreerrors": True,
+        "logger": MyLogger(),
+        "merge_output_format": "mp4",
+        "outtmpl": "%(playlist)s--%(playlist_index)s--%(title)s.%(ext)s",
+        "postprocessors": [{"key": "FFmpegMetadata",}],
+        "progress_hooks": [handle_raw_ytdl_updates],
+        "restrictfilenames": True,
+        "writeinfojson": True,
         # 'playliststart': 5,
         # 'playlistend': 6,
         # 'playlist_items': [], #  Specific indices of playlist to download.
     }
 
     if not force:
-        ydl_default_opts['download_archive'] = PlaylistList.archive
+        ydl_default_opts["download_archive"] = PlaylistList.archive
 
     ydl_opts = ydl_default_opts
     # todo ask itunes: see what episodes of each show we don't have yet
@@ -217,7 +216,7 @@ def run(resultdir: str, workdir: str, force: bool):
                 ydl.download(url_)
 
         for url in urls:
-            logger.info(f'submitting download job for {url}')
+            logger.info(f"submitting download job for {url}")
             created_futures.append(dl_pool.submit(do_download, [url]))
 
     finally:
@@ -225,19 +224,17 @@ def run(resultdir: str, workdir: str, force: bool):
 
     while True:  # I hate this
         try:
-            logger.debug(f'watching for threads to exit')
-            finished, unfinished = concurrent.futures.wait(
-                created_futures, timeout=60 * 1000, return_when=concurrent.futures.ALL_COMPLETED
-            )
+            logger.debug(f"watching for threads to exit")
+            finished, unfinished = concurrent.futures.wait(created_futures, timeout=60 * 1000, return_when=concurrent.futures.ALL_COMPLETED)
             if len(list(unfinished)) == 0:
-                logger.debug(f'all threads out!')
+                logger.debug(f"all threads out!")
                 break
         except ValueError:
-            logger.debug(f'More threads going (value error)')
+            logger.debug(f"More threads going (value error)")
             continue
 
     for pool in [dl_pool, tagpool, add_pool, rmtrash_pool]:
-        logger.debug(f'Telling pool it\'s shutdown time.')
+        logger.debug(f"Telling pool it's shutdown time.")
         pool.shutdown(wait=True)
     logger.info("Done!")
 
@@ -246,5 +243,5 @@ def postprocess(dir):
     for subdir, dirs, files in os.walk(dir):
         for thisfile in files:
             (unused, ext) = os.path.splitext(thisfile)
-            if ext == '.mp4':
+            if ext == ".mp4":
                 return
