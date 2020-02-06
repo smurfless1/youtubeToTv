@@ -4,7 +4,9 @@
 #
 #    pip-compile --output-file=requirements.txt
 #
-
 click-log==0.3.2
 click==7.0
 https://github.com/smurfless1/applescript/archive/master.zip
+subler==0.4.2
+xdg==4.0.1
+youtube-dl==2020.1.24

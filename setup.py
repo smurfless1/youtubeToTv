@@ -19,6 +19,9 @@ setup(
         'click',
         'click-log',
         'lameapplescript@https://github.com/smurfless1/applescript/archive/master.zip',
+        'subler',
+        'xdg',
+        'youtube_dl',
     ],
     extras_require={
         'dev': [

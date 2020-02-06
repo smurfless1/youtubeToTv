@@ -9,7 +9,7 @@ from pathlib import Path
 from time import sleep
 from typing import Any, List
 
-import applescript
+import lameapplescript
 import click_log
 import youtube_dl
 from youtubetotv.mylogger import MyLogger
@@ -103,7 +103,7 @@ end try
     def applescript_then_trash(inscript, infojsonfile, outfile, tagged):
         try:
             logger.debug(f"submitting applescript for {outfile}")
-            applescript.run(inscript)
+            lameapplescript.run(inscript)
         except:
             logger.error(f"failed applescript for {outfile}")
             pass
@@ -160,14 +160,14 @@ def run(resultdir: str, workdir: str, force: bool):
 
             """
             Example:
-            
+
             {
-            u'status': u'finished', 
-            u'downloaded_bytes': 226255302, 
-            u'_elapsed_str': u'01:07', 
-            u'filename': u'Subnautica--02--Subnautica_Part_2_OCEAN_=_DEATH.mp4', 
-            u'elapsed': 67.5114598274231, 
-            u'total_bytes': 226255302, 
+            u'status': u'finished',
+            u'downloaded_bytes': 226255302,
+            u'_elapsed_str': u'01:07',
+            u'filename': u'Subnautica--02--Subnautica_Part_2_OCEAN_=_DEATH.mp4',
+            u'elapsed': 67.5114598274231,
+            u'total_bytes': 226255302,
             u'_total_bytes_str': u'215.77MiB'
             }"""
             logger.debug(ytdl_update_dict)
