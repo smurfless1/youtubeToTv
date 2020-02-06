@@ -1,10 +1,12 @@
 import os
+from pathlib import Path
 
 import click
 
-from youtubeToTv.youtubetotv.playlists import Playlist
-from youtubeToTv.youtubetotv.playlists import PlaylistList
-from .run import run
+from youtubetotv.playlists import Playlist
+from youtubetotv.playlists import PlaylistList
+from youtubetotv.run import logger, run
+import click_log
 
 
 @click.group()
@@ -18,6 +20,7 @@ def lsplaylist():
         PlaylistList.load()
         for cc in PlaylistList.lists.keys():
             print(cc)
+            print(PlaylistList.lists[cc])
     except:
         print("Whoooooa. That didn't work.")
 
@@ -45,11 +48,16 @@ def rmplaylist(name):
         del PlaylistList.lists[name]
         PlaylistList.save()
     else:
-        print("Could not find that cluster")
+        print("Could not find that playlist")
 
 
-@click.command()
-@click.option("--dir", "-d", help='dir to scan', default=os.path.dirname(os.path.abspath(__file__)))
-@click.option('--outdir', '-o', help='output dir', default='~/Downloads')
+@playlist.command()
+@click.option("--dir", "-d", help='dir to scan', default=Path("~/Movies").expanduser())
+@click.option('--outdir', '-o', help='output dir', default=Path("~/Downloads").expanduser())
+@click_log.simple_verbosity_option(logger)
 def download(dir, outdir):
-    run('', dir, outdir)
+    run(dir, outdir)
+
+
+if __name__ == "__main__":
+    download()

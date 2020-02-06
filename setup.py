@@ -17,6 +17,7 @@ setup(
     python_requires='>=3.4',
     install_requires=[
         'click',
+        'click-log',
         'lameapplescript@https://github.com/smurfless1/applescript/archive/master.zip',
     ],
     extras_require={

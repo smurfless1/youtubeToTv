@@ -1,25 +1,38 @@
+import concurrent
+import time
+from copy import copy
+from logging import getLogger
 import json
 import os
+from pathlib import Path
+from typing import List, Any
 
-from youtubeToTv.youtubetotv.mylogger import MyLogger
+from youtubetotv.mylogger import MyLogger
 
-if os.path.exists('/Volumes'):
-    from subler import Atom, Subler
 import applescript
 from .playlists import PlaylistList
-from threading import Thread
 from time import sleep
 import youtube_dl
+import platform
+from concurrent.futures import ThreadPoolExecutor
+import click_log
+
+if platform.system() == "Darwin":
+    from subler import Atom, Subler
+
+logger = getLogger(__name__)
+click_log.basic_config(logger)
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 PlaylistList.load()
 
-json_episode_tag = u'playlist_index'
-json_tv_show_tag = u'TV Show'
-json_tv_show_name = u'playlist'
-json_tv_show_episode = u'playlist_index'
-json_episode_name = u'title'
+JSON_EPISODE_TAG = u'playlist_index'
+JSON_TV_SHOW_TAG = u'TV Show'
+JSON_TV_SHOW_NAME = u'playlist'
+JSON_TV_SHOW_EPISODE = u'playlist_index'
+JSON_EPISODE_NAME = u'title'
+
 
 # todo loop across multiple playlists
 # todo track current position in a playlist
@@ -31,85 +44,147 @@ def defer_rmtrash(i):
     os.system('rmtrash %s' % i)
 
 
+def tag_and_enqueue_add(
+        infojsonfile: Path,
+        source_file: Path,
+        output_directory: Path,
+        created_futures: List[Any],
+        add_pool: ThreadPoolExecutor,
+        rmtrash_pool: ThreadPoolExecutor) -> None:
+    """Given the movie and info file, tag and queue the add."""
+    time.sleep(3)  # fs sync?
+    with infojsonfile.open() as jsonfile:
+        logger.debug('opening json file')
+        ytdl_update_dict = json.load(jsonfile, encoding='utf-8')
 
-def run(itunes, dir, outdir):
-    # todo itunes no longer used
-    # this includes captures of above args
-    def handle_ytdl_updates(d):
-        if not os.path.exists('/Volumes'):
-            return
-        outbase = os.path.expanduser(outdir)
+    kind2 = Atom(u'Media Kind', JSON_TV_SHOW_TAG)
+    episode = Atom(u'TV Episode #', ytdl_update_dict[JSON_TV_SHOW_EPISODE])
+    show = Atom(u'TV Show', ytdl_update_dict[JSON_TV_SHOW_NAME].encode('ascii', 'ignore').decode('ascii'))
+    name = Atom(u'Name', ytdl_update_dict[JSON_EPISODE_NAME].encode('ascii', 'ignore').decode('ascii'))
 
-        if d['status'] == 'finished':
-            print('Done downloading, now adding to iTunes ...')
-            # print(d) # {u'status': u'finished', u'downloaded_bytes': 226255302, u'_elapsed_str': u'01:07', u'filename': u'Subnautica--02--Subnautica_Part_2_OCEAN_=_DEATH.mp4', u'elapsed': 67.5114598274231, u'total_bytes': 226255302, u'_total_bytes_str': u'215.77MiB'}
-            thisfile = d['filename']
-            (unused, ext) = os.path.splitext(thisfile)
-            if ext == '.mp4':
-                bpath = os.path.abspath(dir)
-                abs = os.path.join(bpath, thisfile)
-                outfile = os.path.join(outbase, os.path.basename(abs))
-                if os.path.exists(outfile):
-                    return
+    tagged_file = output_directory.joinpath(source_file.name)
 
-                (fname, unused) = os.path.splitext(os.path.basename(abs))
-                infojsonfile = os.path.join(bpath, fname + '.info.json')
-                if os.path.exists(infojsonfile):
-                    # print('exists')
-                    with open(infojsonfile) as jsonfile:
-                        # print('opening')
-                        d = json.load(jsonfile, encoding='utf-8')
+    tagger = Subler(str(source_file), dest=str(tagged_file), media_kind=JSON_TV_SHOW_TAG)
+    try:
+        metadata = tagger.existing_metadata
+        metadata.append(show)
+        metadata.append(name)
+        metadata.append(kind2)
+        metadata.append(episode)
+        # description = Atom(u'Description', tagger.existing_metadata['description'].decode('utf-8').encode('ascii', 'ignore'))
+        # metadata.append('description)
+        # todo tag with playlist url somehow
+        # todo un-unicode comments type tags
 
-                        kind2 = Atom(u'Media Kind', json_tv_show_tag)
-                        episode = Atom(u'TV Episode #', d[json_tv_show_episode])
-                        show = Atom(u'TV Show', d[json_tv_show_name].encode('ascii', 'ignore').decode('ascii'))
-                        name = Atom(u'Name', d[json_episode_name].encode('ascii', 'ignore').decode('ascii'))
+        # todo set dest for completed files to correct itunes dir to avoid moves later
+        logger.debug(f'tagging {source_file}')
+        tagger = Subler(str(source_file), dest=str(tagged_file), media_kind=JSON_TV_SHOW_TAG, metadata=metadata)
+        tagger.tag()
+    except BaseException as be:
+        logger.error(be)
+        logger.error('Tags didnt get set, adding anyway')
+        pass
 
-                        tagger = Subler(abs, media_kind=json_tv_show_tag)
-                        metadata = tagger.existing_metadata
-                        metadata.append(show)
-                        metadata.append(name)
-                        metadata.append(kind2)
-                        metadata.append(episode)
-                        # description = Atom(u'Description', tagger.existing_metadata['description'].decode('utf-8').encode('ascii', 'ignore'))
-                        # metadata.append('description)
-                        # todo tag with playlist url somehow
-                        # todo un-unicode comments type tags
-
-                        # todo set dest for completed files to correct itunes dir to avoid moves later
-                        print(outfile)
-                        try:
-                            try:
-                                tagger = Subler(abs, dest=outfile, media_kind=json_tv_show_tag, metadata=metadata)
-                                tagger.tag()
-                            except:
-                                print('Tags didnt get set, adding anyway')
-                                pass
-
-                            # add to itunes directly
-                            script = """
+    logger.debug(f'creating script for {source_file}')
+    # add to itunes directly
+    script = """
 try
-tell application "iTunes"
-    set file_ to (POSIX file "%s" as alias)
-    set newFile to add file_ to playlist "Library" of source "Library"
+tell application "TV"
+set file_ to (POSIX file "%s" as alias)
+set newFile to add file_ to playlist "Library" of source "Library"
+tell newFile to set media kind to TV show
 end tell
 end try
-                            """ % outfile
-                            applescript.run(script)
+""" % str(tagged_file)
+    logger.debug(script)
 
-                            # todo check presence of rmtrash?
-                            # todo defer - list?
-                            t = Thread(target=defer_rmtrash, args=(infojsonfile,))
-                            t.start()
-                            t = Thread(target=defer_rmtrash, args=(abs,))
-                            t.start()
-                            os.system('rmtrash %s' % outfile)
-                        except:
-                            pass
+    def applescript_then_trash(inscript, infojsonfile, outfile, tagged):
+        try:
+            logger.debug(f'submitting applescript for {outfile}')
+            applescript.run(inscript)
+        except:
+            logger.error(f'failed applescript for {outfile}')
+            pass
+        logger.debug(f'submitting trash jobs for {outfile}')
+        created_futures.append(rmtrash_pool.submit(defer_rmtrash, infojsonfile))
+        created_futures.append(rmtrash_pool.submit(defer_rmtrash, outfile))
+        created_futures.append(rmtrash_pool.submit(defer_rmtrash, tagged))
+
+        logger.debug(f'submitting applescript job for {outfile}')
+
+    created_futures.append(add_pool.submit(applescript_then_trash, script, infojsonfile, source_file, tagged_file))
+
+
+def run(resultdir, workdir):
+    # workdir is ~/Downloads - working directory for the download
+    # resultdir is ~/Movies is where they should go when tagged
+    os.chdir(Path(workdir).absolute())  # youtube-dl seems to only work here for now
+
+    created_futures = []
+    workdir_expanded = Path(workdir).expanduser()
+
+    dl_pool = ThreadPoolExecutor(max_workers=3)
+    tagpool = ThreadPoolExecutor(max_workers=3)
+    add_pool = ThreadPoolExecutor(max_workers=3)
+    rmtrash_pool = ThreadPoolExecutor(max_workers=9)
+
+    def handle_raw_ytdl_updates(ytdl_update_dict):
+        """
+        Callback for youtube-dl. Enqueue work in tagpool.
+
+        This is at this scope to capture tagpool and created_futures
+        """
+        if platform.system() != "Darwin":
+            return
+        if ytdl_update_dict['status'] == 'finished':
+            created_futures.append(tagpool.submit(handle_ytdl_updates, ytdl_update_dict))
+
+    def handle_ytdl_updates(ytdl_update_dict):
+        """
+        Given an update dict from youtube-dl
+        When I can find both files
+        When I read the json file
+        Then I tag the movie with tags from the json
+        And I enqueue the add to TV.app step
+
+        :param ytdl_update_dict:
+        :return:
+        """
+        if platform.system() != "Darwin":
+            return
+
+        if ytdl_update_dict['status'] == 'finished':
+            logger.info('Done downloading, now adding to iTunes ...')
+
+            """
+            Example:
+            
+            {
+            u'status': u'finished', 
+            u'downloaded_bytes': 226255302, 
+            u'_elapsed_str': u'01:07', 
+            u'filename': u'Subnautica--02--Subnautica_Part_2_OCEAN_=_DEATH.mp4', 
+            u'elapsed': 67.5114598274231, 
+            u'total_bytes': 226255302, 
+            u'_total_bytes_str': u'215.77MiB'
+            }"""
+            logger.debug(ytdl_update_dict)
+
+            updated_file_path = Path(ytdl_update_dict['filename'])
+            ext = updated_file_path.suffix
+            if ext != '.mp4':
+                return
+
+            # build the desired output file Path in resultdir
+            outfile = workdir_expanded.joinpath(updated_file_path)
+            infojsonfile = Path(outfile).with_suffix(".info.json")
+
+            tag_and_enqueue_add(infojsonfile, outfile, Path(resultdir).expanduser(), created_futures, add_pool, rmtrash_pool)
+
 
     ydl_default_opts = {
         'call_home': False,
-        'download_archive': PlaylistList.archive,
+        # 'download_archive': PlaylistList.archive,
         'format': 'best[ext=mp4]/best',
         'ignoreerrors': True,
         'logger': MyLogger(),
@@ -118,7 +193,7 @@ end try
         'postprocessors': [{
             'key': 'FFmpegMetadata',
         }],
-        'progress_hooks': [handle_ytdl_updates],
+        'progress_hooks': [handle_raw_ytdl_updates],
         'restrictfilenames': True,
         'writeinfojson': True,
         # 'playliststart': 5,
@@ -128,16 +203,38 @@ end try
 
     ydl_opts = ydl_default_opts
     # todo ask itunes: see what episodes of each show we don't have yet
-    #episode_list = range(1, 10)
-    #ydl_opts['playlist_items'] = episode_list
+    # episode_list = range(1, 10)
+    # ydl_opts['playlist_items'] = episode_list
     # todo a. find show name
 
     try:
         urls = [list.url for list in PlaylistList.lists.values()]
-        print(urls)
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            ydl.download(urls)
+
+        def do_download(url_):
+            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                ydl.download(url_)
+
+        for url in urls:
+            logger.info(f'submitting download job for {url}')
+            created_futures.append(dl_pool.submit(do_download, [url]))
+
     finally:
-        # todo join rmtrash threads?
         pass
 
+    while True:  # I hate this
+        try:
+            logger.debug(f'watching for threads to exit')
+            finished, unfinished = concurrent.futures.wait(
+                created_futures, timeout=60 * 1000, return_when=concurrent.futures.ALL_COMPLETED
+            )
+            if len(list(unfinished)) == 0:
+                logger.debug(f'all threads out!')
+                break
+        except ValueError:
+            logger.debug(f'More threads going (value error)')
+            continue
+
+    for pool in [dl_pool, tagpool, add_pool, rmtrash_pool]:
+        logger.debug(f'Telling pool it\'s shutdown time.')
+        pool.shutdown(wait=True)
+    logger.info("Done!")
