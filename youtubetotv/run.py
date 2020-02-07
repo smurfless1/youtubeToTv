@@ -59,19 +59,23 @@ def tag_and_enqueue_add(
         ytdl_update_dict = json.load(jsonfile, encoding="utf-8")
 
     kind2 = Atom("Media Kind", JSON_TV_SHOW_TAG)
-    episode = Atom("TV Episode #", ytdl_update_dict[JSON_TV_SHOW_EPISODE])
-    show = Atom("TV Show", ytdl_update_dict[JSON_TV_SHOW_NAME].encode("ascii", "ignore").decode("ascii"))
-    name = Atom("Name", ytdl_update_dict[JSON_EPISODE_NAME].encode("ascii", "ignore").decode("ascii"))
+    episode = Atom("TV Episode #", ytdl_update_dict[JSON_TV_SHOW_EPISODE]) if ytdl_update_dict[JSON_TV_SHOW_EPISODE] is not None else None
+    show = Atom("TV Show", ytdl_update_dict[JSON_TV_SHOW_NAME].encode("ascii", "ignore").decode("ascii")) if ytdl_update_dict[JSON_TV_SHOW_NAME] is not None else None
+    name = Atom("Name", ytdl_update_dict[JSON_EPISODE_NAME].encode("ascii", "ignore").decode("ascii")) if ytdl_update_dict[JSON_EPISODE_NAME] is not None else None
 
     tagged_file = output_directory.joinpath(source_file.name)
 
     tagger = Subler(str(source_file), dest=str(tagged_file), media_kind=JSON_TV_SHOW_TAG)
     try:
         metadata = tagger.existing_metadata
-        metadata.append(show)
-        metadata.append(name)
-        metadata.append(kind2)
-        metadata.append(episode)
+        if show is not None:
+            metadata.append(show)
+        if name is not None:
+            metadata.append(name)
+        if kind2 is not None:
+            metadata.append(kind2)
+        if episode is not None:
+            metadata.append(episode)
         # description = Atom(u'Description', tagger.existing_metadata['description'].decode('utf-8').encode('ascii', 'ignore'))
         # metadata.append('description)
         # todo tag with playlist url somehow
