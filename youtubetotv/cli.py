@@ -5,7 +5,7 @@ import click
 # Implementation libs
 import click_log
 from youtubetotv.playlists import Playlist, PlaylistList
-from youtubetotv.run import logger, run
+from youtubetotv.run import logger, postprocess, run
 
 
 @click.group()
@@ -56,5 +56,14 @@ def download(dir, outdir, force):
     run(dir, outdir, force)
 
 
+@playlist.command()
+@click.option("--dir", "-d", help="dir to scan", default=Path("~/Movies").expanduser())
+@click.option("--outdir", "-o", help="output dir", default=Path("~/Downloads").expanduser())
+@click.option("--force", "-f", help="force download", is_flag=True)
+@click_log.simple_verbosity_option(logger)
+def process(dir, outdir, force):
+    postprocess(dir, outdir, force)
+
+
 if __name__ == "__main__":
-    download()
+    process()

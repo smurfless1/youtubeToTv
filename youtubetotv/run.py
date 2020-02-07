@@ -238,9 +238,33 @@ def run(resultdir: str, workdir: str, force: bool):
     logger.info("Done!")
 
 
-def postprocess(dir):
-    for subdir, dirs, files in os.walk(dir):
-        for thisfile in files:
-            (unused, ext) = os.path.splitext(thisfile)
-            if ext == ".mp4":
-                return
+def postprocess(resultdir: str, workdir: str, force: bool):
+    dl_pool = ThreadPoolExecutor(max_workers=3)
+    tagpool = ThreadPoolExecutor(max_workers=3)
+    add_pool = ThreadPoolExecutor(max_workers=3)
+    rmtrash_pool = ThreadPoolExecutor(max_workers=9)
+
+    created_futures = []
+
+    for entry in os.scandir(workdir):
+        moviefile = Path(entry)
+        if entry.is_file() and moviefile.suffix == ".mp4":
+            infofile = moviefile.with_suffix(".info.json")
+            if moviefile.exists() and infofile.exists():
+                tag_and_enqueue_add(infofile, moviefile, Path(resultdir), created_futures, add_pool, rmtrash_pool)
+
+    while True:  # I hate this
+        try:
+            logger.debug(f"watching for threads to exit")
+            finished, unfinished = concurrent.futures.wait(created_futures, timeout=60 * 1000, return_when=concurrent.futures.ALL_COMPLETED)
+            if len(list(unfinished)) == 0:
+                logger.debug(f"all threads out!")
+                break
+        except ValueError:
+            logger.debug(f"More threads going (value error)")
+            continue
+
+    for pool in [dl_pool, tagpool, add_pool, rmtrash_pool]:
+        logger.debug(f"Telling pool it's shutdown time.")
+        pool.shutdown(wait=True)
+    logger.info("Done!")
