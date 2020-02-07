@@ -34,7 +34,7 @@ setup(
     },
     entry_points='''
     [console_scripts]
-    youtubetotv=youtubetotv.cli:playlist
+    yttt=youtubetotv.cli:playlist
     ''',
 )
 

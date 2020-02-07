@@ -9,8 +9,9 @@ from pathlib import Path
 from time import sleep
 from typing import Any, List
 
-import lameapplescript
+# Implementation libs
 import click_log
+import lameapplescript
 import youtube_dl
 from youtubetotv.mylogger import MyLogger
 
@@ -40,7 +41,7 @@ JSON_EPISODE_NAME = "title"
 
 def defer_rmtrash(i):
     sleep(3)
-    os.system("rmtrash %s" % i)
+    os.system("rmtrash %s" % i)  # nosec B605
 
 
 def tag_and_enqueue_add(
@@ -83,7 +84,6 @@ def tag_and_enqueue_add(
     except BaseException as be:
         logger.error(be)
         logger.error("Tags didnt get set, adding anyway")
-        pass
 
     logger.debug(f"creating script for {source_file}")
     # add to itunes directly
@@ -104,9 +104,8 @@ end try
         try:
             logger.debug(f"submitting applescript for {outfile}")
             lameapplescript.run(inscript)
-        except:
+        except ChildProcessError:
             logger.error(f"failed applescript for {outfile}")
-            pass
         logger.debug(f"submitting trash jobs for {outfile}")
         created_futures.append(rmtrash_pool.submit(defer_rmtrash, infojsonfile))
         created_futures.append(rmtrash_pool.submit(defer_rmtrash, outfile))
@@ -190,7 +189,7 @@ def run(resultdir: str, workdir: str, force: bool):
         "logger": MyLogger(),
         "merge_output_format": "mp4",
         "outtmpl": "%(playlist)s--%(playlist_index)s--%(title)s.%(ext)s",
-        "postprocessors": [{"key": "FFmpegMetadata",}],
+        "postprocessors": [{"key": "FFmpegMetadata"}],
         "progress_hooks": [handle_raw_ytdl_updates],
         "restrictfilenames": True,
         "writeinfojson": True,

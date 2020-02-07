@@ -1,6 +1,7 @@
 import os
-import pickle
+import pickle  # nosec B403
 
+# Implementation libs
 from xdg import XDG_CONFIG_HOME
 
 configfile_dir = XDG_CONFIG_HOME / "ntscli.develop"
@@ -16,7 +17,7 @@ class PlaylistList:
     @staticmethod
     def load():
         if os.path.exists(PlaylistList.cache):
-            PlaylistList.lists = pickle.load(open(PlaylistList.cache, "rb"))
+            PlaylistList.lists = pickle.load(open(PlaylistList.cache, "rb"))  # nosec B301
 
     @staticmethod
     def save():
@@ -35,9 +36,6 @@ class Playlist:
 
     @staticmethod
     def load():
-        try:
-            if os.path.exists(Playlist.cache):
-                return pickle.load(open(Playlist.cache, "rb"))
-            raise Exception("Ouch")
-        except:
-            print("Unable to load a currently selected playlist.")
+        if os.path.exists(Playlist.cache):
+            return pickle.load(open(Playlist.cache, "rb"))  # nosec B301
+        return None

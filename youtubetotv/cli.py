@@ -1,7 +1,8 @@
-import os
 from pathlib import Path
 
 import click
+
+# Implementation libs
 import click_log
 from youtubetotv.playlists import Playlist, PlaylistList
 from youtubetotv.run import logger, run
@@ -14,13 +15,10 @@ def playlist():
 
 @playlist.command()
 def lsplaylist():
-    try:
-        PlaylistList.load()
-        for cc in PlaylistList.lists.keys():
-            print(cc)
-            print(PlaylistList.lists[cc])
-    except:
-        print("Whoooooa. That didn't work.")
+    PlaylistList.load()
+    for cc in PlaylistList.lists.keys():
+        print(cc)
+        print(PlaylistList.lists[cc])
 
 
 @playlist.command()
